@@ -1,0 +1,68 @@
+import { Car } from "@/types/car";
+
+// Voitures de démonstration à afficher si l'API échoue
+export const demoCars: Car[] = [
+  {
+    id: '1',
+    brand: 'Peugeot' as any,
+    model: '308',
+    year: 2022,
+    price: 25000,
+    mileage: 15000,
+    fuelType: 'Essence' as any,
+    transmission: 'Manuelle' as any,
+    bodyType: 'Berline' as any,
+    power: 130,
+    color: 'Bleu',
+    doors: 5,
+    description: 'Belle voiture en excellent état',
+    status: 'AVAILABLE' as any,
+    features: ['Climatisation', 'GPS', 'Bluetooth', 'Régulateur de vitesse'],
+    images: ['https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?q=80&w=1000&auto=format&fit=crop'],
+    mainImage: 'https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?q=80&w=1000&auto=format&fit=crop',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: '2',
+    brand: 'Renault' as any,
+    model: 'Clio',
+    year: 2021,
+    price: 18000,
+    mileage: 25000,
+    fuelType: 'Diesel' as any,
+    transmission: 'Automatique' as any,
+    bodyType: 'Citadine' as any,
+    power: 110,
+    color: 'Rouge',
+    doors: 5,
+    description: 'Petite citadine économique',
+    status: 'AVAILABLE' as any,
+    features: ['Climatisation', 'Bluetooth', 'Régulateur de vitesse'],
+    images: ['https://images.unsplash.com/photo-1494976388531-d1058494cdd8?q=80&w=1000&auto=format&fit=crop'],
+    mainImage: 'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?q=80&w=1000&auto=format&fit=crop',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: '3',
+    brand: 'Volkswagen' as any,
+    model: 'Golf',
+    year: 2020,
+    price: 22000,
+    mileage: 35000,
+    fuelType: 'Essence' as any,
+    transmission: 'Manuelle' as any,
+    bodyType: 'Berline' as any,
+    power: 150,
+    color: 'Noir',
+    doors: 5,
+    description: 'Voiture fiable et confortable',
+    status: 'AVAILABLE' as any,
+    features: ['Climatisation', 'GPS', 'Bluetooth', 'Régulateur de vitesse', 'Sièges chauffants'],
+    images: ['https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?q=80&w=1000&auto=format&fit=crop'],
+    mainImage: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?q=80&w=1000&auto=format&fit=crop',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  }
+];

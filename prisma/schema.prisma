@@ -1,0 +1,103 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String
+  email         String    @unique
+  password      String
+  phone         String?   // Numéro de téléphone de l'utilisateur (optionnel)
+  role          Role      @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  cars          Car[]     // Relation avec les voitures (pour les administrateurs)
+  comments      Comment[] // Relation avec les commentaires
+  reviews       Review[]  // Relation avec les avis généraux
+  image         String?   // URL de l'avatar de l'utilisateur
+}
+
+model Car {
+  id            String    @id @default(uuid())
+  brand         String
+  model         String
+  year          Int
+  price         Float
+  mileage       Int
+  fuelType      String
+  transmission  String
+  bodyType      String
+  power         Int
+  color         String
+  doors         Int
+  description   String
+  status        CarStatus @default(AVAILABLE) // Statut de la voiture (disponible, vendue, réservée)
+  soldDate      DateTime? // Date de vente (null si pas encore vendue)
+  features      Feature[] // Relation avec les caractéristiques
+  images        Image[]   // Relation avec les images
+  mainImageId   String?   // ID de l'image principale
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  userId        String    // ID de l'utilisateur qui a créé la voiture
+  user          User      @relation(fields: [userId], references: [id])
+  comments      Comment[] // Relation avec les commentaires
+}
+
+model Feature {
+  id            String    @id @default(uuid())
+  name          String
+  carId         String
+  car           Car       @relation(fields: [carId], references: [id], onDelete: Cascade)
+}
+
+model Image {
+  id            String    @id @default(uuid())
+  url           String
+  carId         String
+  car           Car       @relation(fields: [carId], references: [id], onDelete: Cascade)
+  isMain        Boolean   @default(false)
+}
+
+model Comment {
+  id            String    @id @default(uuid())
+  content       String
+  rating        Int       // Note de 1 à 5
+  carId         String
+  car           Car       @relation(fields: [carId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Review {
+  id            String    @id @default(uuid())
+  rating        Int       // Note de 1 à 5
+  comment       String    // Commentaire de l'avis
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  isVerified    Boolean   @default(false) // Avis vérifié par l'administrateur
+  isPublished   Boolean   @default(true)  // Avis publié ou non
+}
+
+enum Role {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum CarStatus {
+  AVAILABLE   // Disponible à la vente
+  RESERVED    // Réservée par un client
+  SOLD        // Vendue
+}

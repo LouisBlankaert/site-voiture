@@ -1,0 +1,86 @@
+import { Car } from "@/types/car";
+
+// Données temporaires en attendant l'intégration avec Prisma
+export const cars: Car[] = [
+  {
+    id: "1",
+    brand: "Renault",
+    model: "Clio",
+    year: 2020,
+    price: 12500,
+    mileage: 45000,
+    fuelType: "Essence",
+    transmission: "Manuelle",
+    bodyType: "Citadine",
+    power: 90,
+    color: "Rouge",
+    doors: 5,
+    description: "Renault Clio en excellent état. Première main, carnet d'entretien complet, non-fumeur.",
+    features: [
+      "Climatisation automatique",
+      "Régulateur de vitesse",
+      "Écran tactile multimédia"
+    ],
+    images: [
+      "/images/cars/renault-clio-1.jpg",
+      "/images/cars/renault-clio-2.jpg"
+    ],
+    mainImage: "/images/cars/renault-clio-1.jpg",
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: "2",
+    brand: "Peugeot",
+    model: "3008",
+    year: 2019,
+    price: 22900,
+    mileage: 62000,
+    fuelType: "Diesel",
+    transmission: "Automatique",
+    bodyType: "SUV",
+    power: 130,
+    color: "Gris",
+    doors: 5,
+    description: "Magnifique Peugeot 3008 en parfait état. Révision récente, pneus neufs.",
+    features: [
+      "Toit panoramique",
+      "Sièges chauffants",
+      "Navigation GPS"
+    ],
+    images: [
+      "/images/cars/peugeot-3008-1.jpg",
+      "/images/cars/peugeot-3008-2.jpg"
+    ],
+    mainImage: "/images/cars/peugeot-3008-1.jpg",
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: "3",
+    brand: "Volkswagen",
+    model: "Golf",
+    year: 2021,
+    price: 24500,
+    mileage: 28000,
+    fuelType: "Essence",
+    transmission: "Manuelle",
+    bodyType: "Berline",
+    power: 110,
+    color: "Blanc",
+    doors: 5,
+    description: "Volkswagen Golf 8 comme neuve. Faible kilométrage, entretien régulier chez concessionnaire.",
+    features: [
+      "Digital Cockpit",
+      "Apple CarPlay/Android Auto",
+      "Climatisation bi-zone"
+    ],
+    images: [
+      "/images/cars/volkswagen-golf-1.jpg",
+      "/images/cars/volkswagen-golf-2.jpg"
+    ],
+    mainImage: "/images/cars/volkswagen-golf-1.jpg",
+    createdAt: new Date(),
+    updatedAt: new Date()
+  }
+];
