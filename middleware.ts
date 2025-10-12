@@ -53,5 +53,10 @@ export async function middleware(request: NextRequest) {
 
 // Configurer les chemins sur lesquels le middleware doit s'exécuter
 export const config = {
-  matcher: ['/admin/:path*', '/auth/:path*', '/register'],
+  matcher: [
+    '/admin/:path*', 
+    '/auth/:path*',
+    // Exclure explicitement /register
+    '/((?!register).*)',
+  ],
 };
