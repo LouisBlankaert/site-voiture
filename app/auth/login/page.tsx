@@ -89,8 +89,13 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 text-center text-sm">
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground mb-2">
               Accès réservé aux administrateurs
+            </p>
+            <p>
+              <Link href="/register" className="text-primary hover:underline">
+                Créer un compte administrateur
+              </Link>
             </p>
           </div>
         </div>

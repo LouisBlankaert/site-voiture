@@ -5,6 +5,11 @@ import type { NextRequest } from 'next/server';
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   
+  // Permettre l'accès à la page register sans authentification
+  if (path === '/register') {
+    return NextResponse.next();
+  }
+  
   // Vérifier si le chemin commence par /admin/super - réservé aux super-admins
   if (path.startsWith('/admin/super')) {
     const session = await getToken({
@@ -48,5 +53,5 @@ export async function middleware(request: NextRequest) {
 
 // Configurer les chemins sur lesquels le middleware doit s'exécuter
 export const config = {
-  matcher: ['/admin/:path*', '/auth/:path*'],
+  matcher: ['/admin/:path*', '/auth/:path*', '/register'],
 };
