@@ -6,8 +6,10 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
+  // Pour Vercel Postgres, ajoutez cette ligne :
+  relationMode = "prisma"
 }
 
 model User {
@@ -49,6 +51,9 @@ model Car {
   userId        String    // ID de l'utilisateur qui a créé la voiture
   user          User      @relation(fields: [userId], references: [id])
   comments      Comment[] // Relation avec les commentaires
+
+  // Index pour améliorer les performances avec relationMode=prisma
+  @@index([userId])
 }
 
 model Feature {
@@ -56,6 +61,8 @@ model Feature {
   name          String
   carId         String
   car           Car       @relation(fields: [carId], references: [id], onDelete: Cascade)
+  
+  @@index([carId])
 }
 
 model Image {
@@ -64,6 +71,8 @@ model Image {
   carId         String
   car           Car       @relation(fields: [carId], references: [id], onDelete: Cascade)
   isMain        Boolean   @default(false)
+  
+  @@index([carId])
 }
 
 model Comment {
@@ -76,6 +85,9 @@ model Comment {
   user          User      @relation(fields: [userId], references: [id])
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  
+  @@index([carId])
+  @@index([userId])
 }
 
 model Review {
@@ -88,6 +100,8 @@ model Review {
   updatedAt     DateTime  @updatedAt
   isVerified    Boolean   @default(false) // Avis vérifié par l'administrateur
   isPublished   Boolean   @default(true)  // Avis publié ou non
+  
+  @@index([userId])
 }
 
 enum Role {
