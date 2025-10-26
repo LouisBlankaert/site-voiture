@@ -126,7 +126,7 @@ export default function AdminCarsPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Administration - Gestion des voitures</h1>
         <Button asChild>
-          <Link href="/admin/voitures/new">Ajouter une voiture</Link>
+          <Link href="/admin/ajouter">Ajouter une voiture</Link>
         </Button>
       </div>
 
