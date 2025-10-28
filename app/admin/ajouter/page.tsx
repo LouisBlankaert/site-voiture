@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CarBrand, FuelType, TransmissionType, CarBodyType } from "@/types/car";
 import { useToast } from "@/components/ui/use-toast";
 import { useSession } from "next-auth/react";
+import { useDropzone } from "react-dropzone";
+import { Loader2 } from "lucide-react";
 
 export default function AddCarPage() {
   const router = useRouter();
@@ -14,6 +16,7 @@ export default function AddCarPage() {
   const { data: session } = useSession();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
   
   const [formData, setFormData] = useState({
     brand: "",
@@ -110,6 +113,66 @@ export default function AddCarPage() {
       mainImage: url
     }));
   };
+  
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    if (acceptedFiles.length === 0) return;
+    
+    setIsUploading(true);
+    
+    for (const file of acceptedFiles) {
+      try {
+        const fileFormData = new FormData();
+        fileFormData.append('file', file);
+        
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: fileFormData,
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Erreur lors de l'upload: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        
+        // Ajouter l'URL de l'image téléchargée à la liste des images
+        setFormData(prev => ({
+          ...prev,
+          images: [...prev.images, result.url]
+        }));
+        
+        // Si c'est la première image ou s'il n'y a pas d'image principale, la définir comme principale
+        if (formData.images.length === 0 || formData.mainImage === "") {
+          setFormData(prev => ({
+            ...prev,
+            mainImage: result.url
+          }));
+        }
+        
+        toast({
+          title: "Succès",
+          description: `Image ${file.name} téléchargée avec succès`,
+        });
+      } catch (error) {
+        console.error("Erreur lors de l'upload:", error);
+        toast({
+          title: "Erreur",
+          description: `Échec du téléchargement de ${file.name}`,
+          variant: "destructive",
+        });
+      }
+    }
+    
+    setIsUploading(false);
+  }, [formData.images.length, formData.mainImage, toast]);
+  
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'image/*': ['.jpeg', '.jpg', '.png', '.webp', '.gif']
+    },
+    maxSize: 10 * 1024 * 1024, // 10MB
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -432,50 +495,89 @@ export default function AddCarPage() {
         <div className="bg-card border rounded-lg p-6">
           <h2 className="text-xl font-semibold mb-4">Images</h2>
           <div className="space-y-4">
-            <div className="flex gap-2">
-              <Input
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="URL de l'image (ex: /images/cars/voiture.jpg)"
-              />
-              <Button type="button" onClick={addImage}>
-                Ajouter
-              </Button>
+            {/* Zone de drag & drop avec react-dropzone */}
+            <div 
+              {...getRootProps()} 
+              className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer ${isDragActive ? 'border-primary bg-primary/5' : 'border-gray-300'}`}
+            >
+              <input {...getInputProps()} />
+              <div className="space-y-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                {isUploading ? (
+                  <div className="flex flex-col items-center">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    <p className="text-sm text-gray-500 mt-2">Téléchargement en cours...</p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm text-gray-500">
+                      {isDragActive ? "Déposez les fichiers ici..." : "Glissez et déposez vos images ici, ou cliquez pour sélectionner des fichiers"}
+                    </p>
+                    <p className="text-xs text-gray-400">PNG, JPG, WEBP jusqu'à 10MB</p>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Méthode alternative d'ajout d'image par URL */}
+            <div className="mt-6">
+              <h3 className="font-medium mb-2">Ou ajouter une image par URL:</h3>
+              <div className="flex gap-2">
+                <Input
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="URL de l'image (ex: /images/cars/voiture.jpg)"
+                />
+                <Button type="button" onClick={addImage}>
+                  Ajouter
+                </Button>
+              </div>
             </div>
             
             {formData.images.length > 0 && (
-              <div className="border rounded-md p-4">
-                <h3 className="font-medium mb-2">Images ajoutées:</h3>
-                <ul className="space-y-2">
+              <div className="border rounded-md p-4 mt-4">
+                <h3 className="font-medium mb-4">Images ajoutées:</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {formData.images.map((img, index) => (
-                    <li key={index} className="flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          id={`main-${index}`}
-                          name="mainImage"
-                          checked={formData.mainImage === img}
-                          onChange={() => setMainImage(img)}
+                    <div key={index} className="relative group">
+                      <div className="aspect-[4/3] overflow-hidden rounded-md bg-gray-100">
+                        <img 
+                          src={img} 
+                          alt={`Image ${index + 1}`} 
+                          className="object-cover w-full h-full"
                         />
-                        <label htmlFor={`main-${index}`} className="text-sm">
-                          Image principale
-                        </label>
-                        <span className="truncate max-w-md">{img}</span>
                       </div>
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => removeImage(index)}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M18 6 6 18" />
-                          <path d="m6 6 12 12" />
-                        </svg>
-                      </Button>
-                    </li>
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-md">
+                        <div className="flex gap-2">
+                          <Button 
+                            type="button" 
+                            variant="secondary" 
+                            size="sm" 
+                            onClick={() => setMainImage(img)}
+                            className={formData.mainImage === img ? "bg-green-500 text-white hover:bg-green-600" : ""}
+                          >
+                            {formData.mainImage === img ? "Principale" : "Définir principale"}
+                          </Button>
+                          <Button 
+                            type="button" 
+                            variant="destructive" 
+                            size="sm" 
+                            onClick={() => removeImage(index)}
+                          >
+                            Supprimer
+                          </Button>
+                        </div>
+                      </div>
+                      {formData.mainImage === img && (
+                        <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
+                          Principale
+                        </div>
+                      )}
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
             )}
           </div>
