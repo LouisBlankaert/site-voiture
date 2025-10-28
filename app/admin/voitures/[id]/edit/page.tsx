@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { CarBrand, FuelType, TransmissionType, CarBodyType } from "@/types/car";
 import { useToast } from "@/components/ui/use-toast";
 import { useSession } from "next-auth/react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 // Liste des équipements courants pour les voitures
 const commonFeatures = [
@@ -27,6 +28,7 @@ export default function EditCarPage({ params }: { params: Promise<{ id: string }
   const { data: session } = useSession();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState("");
   const [showCommonFeatures, setShowCommonFeatures] = useState(false);
   
@@ -357,6 +359,47 @@ export default function EditCarPage({ params }: { params: Promise<{ id: string }
     }
   };
 
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    setError("");
+    
+    try {
+      // Vérifier si l'utilisateur est connecté
+      if (!session) {
+        throw new Error("Vous devez être connecté pour supprimer une voiture");
+      }
+      
+      // Envoyer la requête de suppression à l'API
+      const response = await fetch(`/api/cars/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Erreur API:", response.status, errorData);
+        throw new Error(errorData.error || "Erreur lors de la suppression de la voiture");
+      }
+      
+      // Afficher un toast de succès
+      toast({
+        title: "Voiture supprimée avec succès",
+        description: `${carFormData.brand} ${carFormData.model} a été supprimée.`,
+        variant: "default",
+      });
+      
+      // Rediriger vers la page d'administration
+      router.push("/admin/voitures");
+    } catch (err: any) {
+      setError(err.message || "Une erreur est survenue");
+      toast({
+        title: "Erreur",
+        description: err.message || "Une erreur est survenue lors de la suppression de la voiture",
+        variant: "destructive",
+      });
+      setIsDeleting(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[60vh]">
@@ -372,9 +415,42 @@ export default function EditCarPage({ params }: { params: Promise<{ id: string }
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold">Modifier la Voiture</h1>
-        <Button variant="outline" onClick={() => router.push("/admin/voitures")}>
-          Retour à la liste
-        </Button>
+        <div className="flex gap-2">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" disabled={isDeleting}>
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Suppression...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Supprimer
+                  </>
+                )}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Êtes-vous sûr de vouloir supprimer cette voiture ?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Cette action est irréversible. Toutes les données associées à cette voiture (images, caractéristiques, commentaires) seront définitivement supprimées.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">
+                  Supprimer
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button variant="outline" onClick={() => router.push("/admin/voitures")}>
+            Retour à la liste
+          </Button>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
