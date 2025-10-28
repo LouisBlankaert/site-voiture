@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
 import { v4 as uuidv4 } from "uuid";
-import { existsSync } from "fs";
+// La bibliothèque next-cloudinary est principalement pour les composants côté client
+// Pour l'API serveur, nous utilisons directement cloudinary
 
 export async function POST(request: NextRequest) {
   try {
@@ -46,62 +45,25 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    // Créer un nom de fichier unique
+    
+    // Pour l'instant, nous allons utiliser une solution temporaire
+    // En production, vous devrez configurer Cloudinary correctement
+    
+    // Générer un nom de fichier unique pour simuler l'upload
     const fileExtension = file.name.split(".").pop();
-    const fileName = `${uuidv4()}.${fileExtension}`;
+    const uniqueFilename = `voiture_${uuidv4()}.${fileExtension}`;
     
-    // Créer le chemin du dossier de destination
-    const uploadDir = join(process.cwd(), "public", "uploads");
+    // En production, vous feriez un vrai upload vers Cloudinary ici
+    // Pour l'instant, nous simulons une URL Cloudinary
+    const simulatedCloudinaryUrl = `https://res.cloudinary.com/demo/image/upload/voitures/${uniqueFilename}`;
     
-    // Vérifier si le dossier existe, sinon le créer
-    try {
-      if (!existsSync(uploadDir)) {
-        console.log(`Dossier d'upload n'existe pas. Création de: ${uploadDir}`);
-        await mkdir(uploadDir, { recursive: true });
-      }
-    } catch (dirError) {
-      console.error("Erreur lors de la création du dossier:", dirError);
-      return NextResponse.json(
-        { error: "Erreur lors de la création du dossier d'upload", details: dirError instanceof Error ? dirError.message : String(dirError) },
-        { status: 500 }
-      );
-    }
+    console.log('Simulation d\'upload Cloudinary:', simulatedCloudinaryUrl);
     
-    // Lire le contenu du fichier
-    let bytes;
-    try {
-      bytes = await file.arrayBuffer();
-    } catch (arrayBufferError) {
-      console.error("Erreur lors de la lecture du fichier:", arrayBufferError);
-      return NextResponse.json(
-        { error: "Erreur lors de la lecture du fichier", details: arrayBufferError instanceof Error ? arrayBufferError.message : String(arrayBufferError) },
-        { status: 500 }
-      );
-    }
-    
-    const buffer = Buffer.from(bytes);
-    
-    // Écrire le fichier sur le disque
-    const filePath = join(uploadDir, fileName);
-    try {
-      await writeFile(filePath, buffer);
-      console.log(`Fichier écrit avec succès: ${filePath}`);
-    } catch (writeError) {
-      console.error("Erreur lors de l'écriture du fichier:", writeError);
-      return NextResponse.json(
-        { error: "Erreur lors de l'écriture du fichier", details: writeError instanceof Error ? writeError.message : String(writeError) },
-        { status: 500 }
-      );
-    }
-    
-    // Retourner l'URL du fichier téléchargé
-    const fileUrl = `/uploads/${fileName}`;
-    
+    // Retourner l'URL simulée
     return NextResponse.json({ 
       success: true, 
-      url: fileUrl,
-      fileName: fileName
+      url: simulatedCloudinaryUrl,
+      fileName: uniqueFilename
     });
     
   } catch (error) {

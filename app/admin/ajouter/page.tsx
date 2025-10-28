@@ -1,15 +1,14 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CarBrand, FuelType, TransmissionType, CarBodyType } from "@/types/car";
 import { useToast } from "@/components/ui/use-toast";
 import { useSession } from "next-auth/react";
-import { useDropzone } from "react-dropzone";
-import { Loader2 } from "lucide-react";
-import imageCompression from "browser-image-compression";
+import { Upload } from "lucide-react";
+import { CldUploadWidget } from "next-cloudinary";
 
 export default function AddCarPage() {
   const router = useRouter();
@@ -17,7 +16,6 @@ export default function AddCarPage() {
   const { data: session } = useSession();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [isUploading, setIsUploading] = useState(false);
   
   const [formData, setFormData] = useState({
     brand: "",
@@ -115,81 +113,7 @@ export default function AddCarPage() {
     }));
   };
   
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    if (acceptedFiles.length === 0) return;
-    
-    setIsUploading(true);
-    
-    for (const file of acceptedFiles) {
-      try {
-        // Compresser l'image avant l'upload
-        const options = {
-          maxSizeMB: 1, // Taille maximale de 1 Mo
-          maxWidthOrHeight: 1920, // Redimensionner si plus grand que 1920px
-          useWebWorker: true,
-        };
-        
-        let fileToUpload = file;
-        let fileFormData = new FormData();
-        
-        // Vérifier si c'est une image
-        if (file.type.startsWith('image/')) {
-          console.log(`Compression de l'image ${file.name} (taille originale: ${(file.size / 1024 / 1024).toFixed(2)} Mo)`);
-          fileToUpload = await imageCompression(file, options);
-          console.log(`Image compressée: ${(fileToUpload.size / 1024 / 1024).toFixed(2)} Mo`);
-        }
-        
-        fileFormData.append('file', fileToUpload);
-        
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: fileFormData,
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Erreur lors de l'upload: ${response.statusText}`);
-        }
-        
-        const result = await response.json();
-        
-        // Ajouter l'URL de l'image téléchargée à la liste des images
-        setFormData(prev => ({
-          ...prev,
-          images: [...prev.images, result.url]
-        }));
-        
-        // Si c'est la première image ou s'il n'y a pas d'image principale, la définir comme principale
-        if (formData.images.length === 0 || formData.mainImage === "") {
-          setFormData(prev => ({
-            ...prev,
-            mainImage: result.url
-          }));
-        }
-        
-        toast({
-          title: "Succès",
-          description: `Image ${file.name} téléchargée avec succès`,
-        });
-      } catch (error) {
-        console.error("Erreur lors de l'upload:", error);
-        toast({
-          title: "Erreur",
-          description: `Échec du téléchargement de ${file.name}`,
-          variant: "destructive",
-        });
-      }
-    }
-    
-    setIsUploading(false);
-  }, [formData.images.length, formData.mainImage, toast]);
-  
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'image/*': ['.jpeg', '.jpg', '.png', '.webp', '.gif']
-    },
-    maxSize: 10 * 1024 * 1024, // 10MB
-  });
+  // Fonction onDrop supprimée car nous utilisons maintenant uniquement le widget Cloudinary
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -512,32 +436,68 @@ export default function AddCarPage() {
         <div className="bg-card border rounded-lg p-6">
           <h2 className="text-xl font-semibold mb-4">Images</h2>
           <div className="space-y-4">
-            {/* Zone de drag & drop avec react-dropzone */}
-            <div 
-              {...getRootProps()} 
-              className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer ${isDragActive ? 'border-primary bg-primary/5' : 'border-gray-300'}`}
+            {/* Widget d'upload Cloudinary */}
+            <CldUploadWidget
+              uploadPreset="voitures_preset"
+              onSuccess={(result: any, { widget }: any) => {
+                console.log('Upload réussi:', result);
+                // Typage explicite pour éviter les erreurs
+                const info = result?.info;
+                if (info && info.secure_url) {
+                  const secureUrl = info.secure_url as string;
+                  
+                  // Ajouter l'URL de l'image téléchargée à la liste des images
+                  setFormData(prev => ({
+                    ...prev,
+                    images: [...prev.images, secureUrl]
+                  }));
+                  
+                  // Si c'est la première image ou s'il n'y a pas d'image principale, la définir comme principale
+                  if (formData.images.length === 0 || formData.mainImage === "") {
+                    setFormData(prev => ({
+                      ...prev,
+                      mainImage: secureUrl
+                    }));
+                  }
+                  
+                  toast({
+                    title: "Succès",
+                    description: `Image téléchargée avec succès`,
+                  });
+                  
+                  widget.close();
+                }
+              }}
+              options={{
+                sources: ['local', 'url', 'camera'],
+                multiple: true,
+                maxFiles: 10,
+                resourceType: "image",
+                cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+                uploadPreset: "voitures_preset",
+                folder: "voitures",
+                clientAllowedFormats: ["jpg", "jpeg", "png", "webp", "gif"],
+                maxFileSize: 10000000, // 10MB
+              }}
             >
-              <input {...getInputProps()} />
-              <div className="space-y-2">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                {isUploading ? (
-                  <div className="flex flex-col items-center">
-                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                    <p className="text-sm text-gray-500 mt-2">Téléchargement en cours...</p>
+              {({ open }) => {
+                return (
+                  <div 
+                    onClick={() => open()}
+                    className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-primary hover:bg-primary/5"
+                  >
+                    <div className="space-y-2">
+                      <Upload className="h-10 w-10 mx-auto text-gray-400" />
+                      <p className="text-sm text-gray-500">
+                        Cliquez pour télécharger vos images
+                      </p>
+                      <p className="text-xs text-gray-400">PNG, JPG, WEBP jusqu'à 10MB</p>
+                    </div>
                   </div>
-                ) : (
-                  <>
-                    <p className="text-sm text-gray-500">
-                      {isDragActive ? "Déposez les fichiers ici..." : "Glissez et déposez vos images ici, ou cliquez pour sélectionner des fichiers"}
-                    </p>
-                    <p className="text-xs text-gray-400">PNG, JPG, WEBP jusqu'à 10MB</p>
-                  </>
-                )}
-              </div>
-            </div>
-
+                );
+              }}
+            </CldUploadWidget>
+            
             {/* Méthode alternative d'ajout d'image par URL */}
             <div className="mt-6">
               <h3 className="font-medium mb-2">Ou ajouter une image par URL:</h3>
@@ -545,7 +505,7 @@ export default function AddCarPage() {
                 <Input
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="URL de l'image (ex: /images/cars/voiture.jpg)"
+                  placeholder="URL de l'image (ex: https://exemple.com/image.jpg)"
                 />
                 <Button type="button" onClick={addImage}>
                   Ajouter
@@ -560,6 +520,7 @@ export default function AddCarPage() {
                   {formData.images.map((img, index) => (
                     <div key={index} className="relative group">
                       <div className="aspect-[4/3] overflow-hidden rounded-md bg-gray-100">
+                        {/* Toujours utiliser une balise img standard car les URLs de Cloudinary sont déjà optimisées */}
                         <img 
                           src={img} 
                           alt={`Image ${index + 1}`} 
