@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { CarBrand, FuelType, TransmissionType, CarBodyType } from "@/types/car";
 import { useToast } from "@/components/ui/use-toast";
 import { useSession } from "next-auth/react";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2, Upload } from "lucide-react";
+import { CldUploadWidget } from "next-cloudinary";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 // Liste des équipements courants pour les voitures
@@ -71,9 +72,7 @@ export default function EditCarPage({ params }: { params: Promise<{ id: string }
 
   const [feature, setFeature] = useState("");
   const [imageUrl, setImageUrl] = useState("");
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
-  const [uploadProgress, setUploadProgress] = useState<{[key: string]: number}>({});
-  const [isDragging, setIsDragging] = useState(false);
+  // Suppression des états inutiles
 
   const brands: CarBrand[] = [
     "Audi", "BMW", "Citroën", "Dacia", "Fiat", "Ford", "Honda", "Hyundai", 
@@ -216,88 +215,7 @@ export default function EditCarPage({ params }: { params: Promise<{ id: string }
     }));
   };
 
-  // Gestion du drag and drop pour les images
-  const handleDragEnter = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      await handleFileUpload(e.dataTransfer.files);
-    }
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      await handleFileUpload(e.target.files);
-    }
-  };
-
-  const handleFileUpload = async (files: FileList) => {
-    const newFiles = Array.from(files);
-    setUploadedFiles(prev => [...prev, ...newFiles]);
-    
-    for (const file of newFiles) {
-      try {
-        const formData = new FormData();
-        formData.append('file', file);
-        
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Erreur lors de l'upload: ${response.statusText}`);
-        }
-        
-        const result = await response.json();
-        
-        // Ajouter l'URL de l'image téléchargée à la liste des images
-        setCarFormData(prev => ({
-          ...prev,
-          images: [...prev.images, result.url]
-        }));
-        
-        // Si c'est la première image ou s'il n'y a pas d'image principale, la définir comme principale
-        if (carFormData.images.length === 0 || !carFormData.mainImage) {
-          setCarFormData(prev => ({
-            ...prev,
-            mainImage: result.url
-          }));
-        }
-        
-        toast({
-          title: "Succès",
-          description: `Image ${file.name} téléchargée avec succès`,
-        });
-      } catch (error) {
-        console.error("Erreur lors de l'upload:", error);
-        toast({
-          title: "Erreur",
-          description: `Échec du téléchargement de ${file.name}`,
-          variant: "destructive",
-        });
-      }
-    }
-  };
+  // Suppression des fonctions de drag and drop et d'upload via API
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -734,36 +652,82 @@ export default function EditCarPage({ params }: { params: Promise<{ id: string }
         <div className="bg-card border rounded-lg p-6">
           <h2 className="text-xl font-semibold mb-4">Images</h2>
           <div className="space-y-4">
-            {/* Zone de drag & drop pour les images */}
-            <div 
-              className={`border-2 border-dashed rounded-lg p-8 text-center ${isDragging ? 'border-primary bg-primary/5' : 'border-gray-300'}`}
-              onDragEnter={handleDragEnter}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
+            {/* Widget d'upload Cloudinary */}
+            <CldUploadWidget
+              uploadPreset="voitures_preset"
+              onSuccess={(result: any, { widget }: any) => {
+                console.log('Upload réussi:', result);
+                // Typage explicite pour éviter les erreurs
+                const info = result?.info;
+                if (info && info.secure_url) {
+                  const secureUrl = info.secure_url as string;
+                  
+                  // Ajouter l'URL de l'image téléchargée à la liste des images
+                  setCarFormData(prev => ({
+                    ...prev,
+                    images: [...prev.images, secureUrl]
+                  }));
+                  
+                  // Si c'est la première image ou s'il n'y a pas d'image principale, la définir comme principale
+                  if (carFormData.images.length === 0 || !carFormData.mainImage) {
+                    setCarFormData(prev => ({
+                      ...prev,
+                      mainImage: secureUrl
+                    }));
+                  }
+                  
+                  toast({
+                    title: "Succès",
+                    description: `Image téléchargée avec succès`,
+                  });
+                  
+                  widget.close();
+                } else {
+                  console.error('Erreur: URL sécurisée manquante dans la réponse', result);
+                  toast({
+                    title: "Erreur",
+                    description: "L'image a été téléchargée mais l'URL est manquante",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              onError={(error: any) => {
+                console.error('Erreur d\'upload Cloudinary:', error);
+                toast({
+                  title: "Erreur d'upload",
+                  description: error?.message || "Une erreur est survenue lors du téléchargement de l'image",
+                  variant: "destructive",
+                });
+              }}
+              options={{
+                sources: ['local', 'url', 'camera'],
+                multiple: true,
+                maxFiles: 10,
+                resourceType: "image",
+                cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'demo',
+                uploadPreset: "voitures_preset",
+                folder: "voitures",
+                clientAllowedFormats: ["jpg", "jpeg", "png", "webp", "gif"],
+                maxFileSize: 10000000, // 10MB
+              }}
             >
-              <div className="space-y-2">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <p className="text-sm text-gray-500">Glissez et déposez vos images ici, ou</p>
-                <div>
-                  <label htmlFor="file-upload" className="cursor-pointer text-primary hover:text-primary/80">
-                    <span>Parcourir vos fichiers</span>
-                    <input 
-                      id="file-upload" 
-                      name="file-upload" 
-                      type="file" 
-                      className="sr-only" 
-                      accept="image/*" 
-                      multiple 
-                      onChange={handleFileChange} 
-                    />
-                  </label>
-                </div>
-                <p className="text-xs text-gray-400">PNG, JPG, WEBP jusqu'à 10MB</p>
-              </div>
-            </div>
+              {({ open }) => {
+                return (
+                  <div 
+                    onClick={() => open()}
+                    className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-primary hover:bg-primary/5"
+                  >
+                    <div className="space-y-2">
+                      <Upload className="h-10 w-10 mx-auto text-gray-400" />
+                      <p className="text-sm text-gray-500">
+                        Cliquez pour télécharger vos images
+                      </p>
+                      <p className="text-xs text-gray-400">PNG, JPG, WEBP jusqu'à 10MB</p>
+                    </div>
+                  </div>
+                );
+              }}
+            </CldUploadWidget>
 
             {/* Méthode alternative d'ajout d'image par URL */}
             <div className="mt-6">
