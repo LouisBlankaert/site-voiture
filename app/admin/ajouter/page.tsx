@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useSession } from "next-auth/react";
 import { useDropzone } from "react-dropzone";
 import { Loader2 } from "lucide-react";
+import imageCompression from "browser-image-compression";
 
 export default function AddCarPage() {
   const router = useRouter();
@@ -121,8 +122,24 @@ export default function AddCarPage() {
     
     for (const file of acceptedFiles) {
       try {
-        const fileFormData = new FormData();
-        fileFormData.append('file', file);
+        // Compresser l'image avant l'upload
+        const options = {
+          maxSizeMB: 1, // Taille maximale de 1 Mo
+          maxWidthOrHeight: 1920, // Redimensionner si plus grand que 1920px
+          useWebWorker: true,
+        };
+        
+        let fileToUpload = file;
+        let fileFormData = new FormData();
+        
+        // Vérifier si c'est une image
+        if (file.type.startsWith('image/')) {
+          console.log(`Compression de l'image ${file.name} (taille originale: ${(file.size / 1024 / 1024).toFixed(2)} Mo)`);
+          fileToUpload = await imageCompression(file, options);
+          console.log(`Image compressée: ${(fileToUpload.size / 1024 / 1024).toFixed(2)} Mo`);
+        }
+        
+        fileFormData.append('file', fileToUpload);
         
         const response = await fetch('/api/upload', {
           method: 'POST',
