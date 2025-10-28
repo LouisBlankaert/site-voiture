@@ -10,12 +10,63 @@ import { useSession } from "next-auth/react";
 import { Upload } from "lucide-react";
 import { CldUploadWidget } from "next-cloudinary";
 
+// Liste des équipements courants pour les voitures
+const commonFeatures = [
+  "Climatisation", "GPS", "Bluetooth", "Régulateur de vitesse", "Caméra de recul",
+  "Sièges chauffants", "Toit ouvrant", "Jantes alliage", "Vitres électriques",
+  "Fermeture centralisée", "Aide au stationnement", "Système audio premium",
+  "Phares LED", "Démarrage sans clé", "Volant multifonction", "Système d'alarme",
+  "Contrôle de stabilité", "Système de freinage d'urgence", "Détecteur d'angle mort"
+];
+
+// Catégories d'équipements avec options
+const equipmentCategories = [
+  {
+    name: "Confort",
+    options: [
+      "Climatisation automatique", "Climatisation bi-zone", "Climatisation tri-zone", 
+      "Sièges chauffants", "Sièges ventilés", "Sièges massants", 
+      "Volant chauffant", "Accès sans clé", "Démarrage sans clé", 
+      "Rétroviseurs rabattables électriquement", "Toit panoramique", "Toit ouvrant"
+    ]
+  },
+  {
+    name: "Technologie",
+    options: [
+      "Système de navigation GPS", "Apple CarPlay", "Android Auto", 
+      "Bluetooth", "Chargeur à induction", "Prises USB", 
+      "Système audio premium", "Écran tactile", "Tableau de bord numérique", 
+      "Affichage tête haute", "Commandes vocales"
+    ]
+  },
+  {
+    name: "Sécurité",
+    options: [
+      "Régulateur de vitesse adaptatif", "Freinage d'urgence automatique", "Détection des piétons", 
+      "Alerte de franchissement de ligne", "Maintien dans la voie", "Détecteur d'angle mort", 
+      "Caméra 360°", "Caméra de recul", "Aide au stationnement avant", "Aide au stationnement arrière", 
+      "Système d'alarme", "Airbags multiples"
+    ]
+  },
+  {
+    name: "Extérieur",
+    options: [
+      "Jantes alliage", "Phares LED", "Phares adaptatifs", "Feux de jour LED", 
+      "Vitres teintées", "Barres de toit", "Attelage", "Rétroviseurs chauffants",
+      "Capteur de pluie", "Capteur de luminosité"
+    ]
+  }
+];
+
 export default function AddCarPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { data: session } = useSession();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [showCommonFeatures, setShowCommonFeatures] = useState(false);
+  const [showEquipmentCategories, setShowEquipmentCategories] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   
   const [formData, setFormData] = useState({
     brand: "",
@@ -79,6 +130,15 @@ export default function AddCarPage() {
         features: [...prev.features, feature.trim()]
       }));
       setFeature("");
+    }
+  };
+
+  const addCommonFeature = (feat: string) => {
+    if (!formData.features.includes(feat)) {
+      setFormData(prev => ({
+        ...prev,
+        features: [...prev.features, feat]
+      }));
     }
   };
 
@@ -405,6 +465,90 @@ export default function AddCarPage() {
               <Button type="button" onClick={addFeature}>
                 Ajouter
               </Button>
+            </div>
+
+            <div className="mt-4 space-y-4">
+              <div className="flex flex-wrap gap-2">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setShowCommonFeatures(!showCommonFeatures)}
+                >
+                  {showCommonFeatures ? "Masquer" : "Afficher"} les équipements courants
+                </Button>
+                
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setShowEquipmentCategories(!showEquipmentCategories)}
+                >
+                  {showEquipmentCategories ? "Masquer" : "Afficher"} les catégories d'équipements
+                </Button>
+              </div>
+              
+              {showCommonFeatures && (
+                <div className="mt-4 border rounded-md p-4">
+                  <h3 className="font-medium mb-2">Équipements courants:</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {commonFeatures.map((feat, index) => (
+                      <Button
+                        key={index}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className={`justify-start ${formData.features.includes(feat) ? 'bg-primary/10' : ''}`}
+                        onClick={() => addCommonFeature(feat)}
+                      >
+                        {formData.features.includes(feat) ? '✓ ' : '+ '}{feat}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {showEquipmentCategories && (
+                <div className="mt-4 border rounded-md p-4">
+                  <h3 className="font-medium mb-4">Catégories d'équipements:</h3>
+                  <div className="space-y-4">
+                    {equipmentCategories.map((category, categoryIndex) => (
+                      <div key={categoryIndex} className="border rounded p-3">
+                        <div 
+                          className="flex justify-between items-center cursor-pointer"
+                          onClick={() => {
+                            setExpandedCategories(prev => {
+                              if (prev.includes(category.name)) {
+                                return prev.filter(cat => cat !== category.name);
+                              } else {
+                                return [...prev, category.name];
+                              }
+                            });
+                          }}
+                        >
+                          <h4 className="font-medium">{category.name}</h4>
+                          <span>{expandedCategories.includes(category.name) ? '▼' : '►'}</span>
+                        </div>
+                        
+                        {expandedCategories.includes(category.name) && (
+                          <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-2">
+                            {category.options.map((option, optionIndex) => (
+                              <Button
+                                key={optionIndex}
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className={`justify-start ${formData.features.includes(option) ? 'bg-primary/10' : ''}`}
+                                onClick={() => addCommonFeature(option)}
+                              >
+                                {formData.features.includes(option) ? '✓ ' : '+ '}{option}
+                              </Button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             
             {formData.features.length > 0 && (
