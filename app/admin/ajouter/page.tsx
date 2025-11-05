@@ -160,10 +160,21 @@ export default function AddCarPage() {
   };
 
   const removeImage = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index)
-    }));
+    setFormData(prev => {
+      // Si l'image supprimée est l'image principale, réinitialiser l'image principale
+      const newImages = prev.images.filter((_, i) => i !== index);
+      let newMainImage = prev.mainImage;
+      
+      if (prev.mainImage === prev.images[index]) {
+        newMainImage = newImages.length > 0 ? newImages[0] : "";
+      }
+      
+      return {
+        ...prev,
+        images: newImages,
+        mainImage: newMainImage
+      };
+    });
   };
 
   const setMainImage = (url: string) => {
@@ -171,6 +182,89 @@ export default function AddCarPage() {
       ...prev,
       mainImage: url
     }));
+  };
+  
+  // Fonction pour gérer l'upload d'une seule image
+  const handleSingleUpload = (secureUrl: string) => {
+    if (!secureUrl) return;
+    
+    setFormData(prev => {
+      const updatedImages = [...prev.images, secureUrl];
+      
+      // Si c'est la première image ou s'il n'y a pas d'image principale, la définir comme principale
+      let updatedMainImage = prev.mainImage;
+      if (updatedMainImage === "") {
+        updatedMainImage = secureUrl;
+      }
+      
+      return {
+        ...prev,
+        images: updatedImages,
+        mainImage: updatedMainImage
+      };
+    });
+    
+    toast({
+      title: "Succès",
+      description: `Image téléchargée avec succès`,
+    });
+  };
+  
+  // Fonction pour gérer l'upload de plusieurs images
+  const handleMultipleUploads = (newImages: string[]) => {
+    if (!newImages || newImages.length === 0) return;
+    
+    setFormData(prev => {
+      // Ajouter toutes les nouvelles images
+      const updatedImages = [...prev.images, ...newImages];
+      
+      // Définir la première image comme principale si aucune n'est définie
+      let updatedMainImage = prev.mainImage;
+      if (updatedMainImage === "") {
+        updatedMainImage = newImages[0];
+      }
+      
+      return {
+        ...prev,
+        images: updatedImages,
+        mainImage: updatedMainImage
+      };
+    });
+    
+    toast({
+      title: "Succès",
+      description: `${newImages.length} image${newImages.length > 1 ? 's' : ''} téléchargée${newImages.length > 1 ? 's' : ''} avec succès`,
+    });
+  };
+  
+  // Fonction pour déplacer une image vers le haut dans la liste
+  const moveImageUp = (index: number) => {
+    if (index <= 0) return; // Ne rien faire si c'est déjà la première image
+    
+    setFormData(prev => {
+      const newImages = [...prev.images];
+      // Échanger l'image avec celle au-dessus
+      [newImages[index], newImages[index - 1]] = [newImages[index - 1], newImages[index]];
+      return {
+        ...prev,
+        images: newImages
+      };
+    });
+  };
+  
+  // Fonction pour déplacer une image vers le bas dans la liste
+  const moveImageDown = (index: number) => {
+    setFormData(prev => {
+      if (index >= prev.images.length - 1) return prev; // Ne rien faire si c'est déjà la dernière image
+      
+      const newImages = [...prev.images];
+      // Échanger l'image avec celle en-dessous
+      [newImages[index], newImages[index + 1]] = [newImages[index + 1], newImages[index]];
+      return {
+        ...prev,
+        images: newImages
+      };
+    });
   };
   
   // Fonction onDrop supprimée car nous utilisons maintenant uniquement le widget Cloudinary
@@ -583,45 +677,82 @@ export default function AddCarPage() {
             {/* Widget d'upload Cloudinary */}
             <CldUploadWidget
               uploadPreset="voitures_preset"
+              onUpload={(result: any) => {
+                // Cette fonction est appelée pendant le processus d'upload
+                console.log('Upload en cours:', result);
+              }}
               onSuccess={(result: any, { widget }: any) => {
                 console.log('Upload réussi:', result);
-                // Typage explicite pour éviter les erreurs
-                const info = result?.info;
-                if (info && info.secure_url) {
-                  const secureUrl = info.secure_url as string;
+                
+                // Afficher la structure complète du résultat pour débogage
+                console.log('Structure du résultat:', JSON.stringify(result, null, 2));
+                
+                // Gérer le cas où result.info est un tableau (upload multiple)
+                if (result && result.info && Array.isArray(result.info)) {
+                  const newImages = result.info
+                    .filter((item: any) => item?.secure_url)
+                    .map((item: any) => item.secure_url as string);
                   
-                  // Ajouter l'URL de l'image téléchargée à la liste des images
-                  setFormData(prev => ({
-                    ...prev,
-                    images: [...prev.images, secureUrl]
-                  }));
-                  
-                  // Si c'est la première image ou s'il n'y a pas d'image principale, la définir comme principale
-                  if (formData.images.length === 0 || formData.mainImage === "") {
-                    setFormData(prev => ({
-                      ...prev,
-                      mainImage: secureUrl
-                    }));
-                  }
-                  
-                  toast({
-                    title: "Succès",
-                    description: `Image téléchargée avec succès`,
-                  });
-                  
-                  widget.close();
+                  handleMultipleUploads(newImages);
                 }
+                // Gérer le cas où result.event est "success" (upload simple)
+                else if (result && result.event === "success" && result.info?.secure_url) {
+                  handleSingleUpload(result.info.secure_url);
+                }
+                // Gérer le cas où result est un tableau d'objets avec secure_url
+                else if (Array.isArray(result)) {
+                  const newImages = result
+                    .filter(item => item?.secure_url || (item?.info && item.info.secure_url))
+                    .map(item => (item.secure_url || item.info.secure_url) as string);
+                  
+                  handleMultipleUploads(newImages);
+                }
+                // Gérer le cas où result a directement une propriété secure_url
+                else if (result && result.secure_url) {
+                  handleSingleUpload(result.secure_url);
+                }
+              }}
+              onClose={() => {
+                console.log('Widget fermé');
               }}
               options={{
                 sources: ['local', 'url', 'camera'],
                 multiple: true,
                 maxFiles: 10,
+                queueViewPosition: "bottom",
+                showAdvancedOptions: true,
+                showUploadMoreButton: true,
+                singleUploadAutoClose: false,
                 resourceType: "image",
                 cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
                 uploadPreset: "voitures_preset",
                 folder: "voitures",
                 clientAllowedFormats: ["jpg", "jpeg", "png", "webp", "gif"],
-                maxFileSize: 10000000, // 10MB
+                maxFileSize: 50000000, // 50MB
+                styles: {
+                  palette: {
+                    window: "#FFFFFF",
+                    windowBorder: "#90A0B3",
+                    tabIcon: "#0078FF",
+                    menuIcons: "#5A616A",
+                    textDark: "#000000",
+                    textLight: "#FFFFFF",
+                    link: "#0078FF",
+                    action: "#FF620C",
+                    inactiveTabIcon: "#0E2F5A",
+                    error: "#F44235",
+                    inProgress: "#0078FF",
+                    complete: "#20B832",
+                    sourceBg: "#F4F6F8"
+                  },
+                  fonts: {
+                    default: null,
+                    "'Fira Sans', sans-serif": {
+                      url: "https://fonts.googleapis.com/css?family=Fira+Sans",
+                      active: true
+                    }
+                  }
+                }
               }}
             >
               {({ open }) => {
@@ -632,10 +763,18 @@ export default function AddCarPage() {
                   >
                     <div className="space-y-2">
                       <Upload className="h-10 w-10 mx-auto text-gray-400" />
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm font-medium text-gray-700">
                         Cliquez pour télécharger vos images
                       </p>
-                      <p className="text-xs text-gray-400">PNG, JPG, WEBP jusqu'à 10MB</p>
+                      <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-left">
+                        <p className="text-xs text-blue-700 mb-1"><strong>Pour télécharger plusieurs images à la fois:</strong></p>
+                        <ol className="text-xs text-blue-700 list-decimal pl-4 space-y-1">
+                          <li>Sélectionnez plusieurs fichiers en maintenant la touche <strong>Ctrl</strong> (ou <strong>Cmd</strong> sur Mac)</li>
+                          <li>Vous pouvez aussi glisser-déposer plusieurs fichiers directement</li>
+                          <li>Après avoir sélectionné vos images, cliquez sur <strong>Ouvrir</strong></li>
+                        </ol>
+                      </div>
+                      <p className="text-xs text-gray-400">PNG, JPG, WEBP jusqu'à 50MB par fichier</p>
                     </div>
                   </div>
                 );
@@ -660,9 +799,18 @@ export default function AddCarPage() {
             {formData.images.length > 0 && (
               <div className="border rounded-md p-4 mt-4">
                 <h3 className="font-medium mb-4">Images ajoutées:</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-4">
+                  <p className="text-sm text-blue-700 mb-2"><strong>Comment organiser vos photos:</strong></p>
+                  <ul className="text-sm text-blue-700 list-disc pl-5 space-y-1">
+                    <li>Utilisez les flèches <strong>haut</strong> et <strong>bas</strong> pour changer l'ordre des images</li>
+                    <li>L'ordre des images est important car il détermine l'ordre d'affichage sur la fiche du véhicule</li>
+                    <li>Vous pouvez définir n'importe quelle image comme <strong>principale</strong> pour la mettre en avant</li>
+                    <li>L'image principale sera celle affichée dans les résultats de recherche</li>
+                  </ul>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {formData.images.map((img, index) => (
-                    <div key={index} className="relative group">
+                    <div key={index} className="relative group border rounded-md p-2 bg-gray-50">
                       <div className="aspect-[4/3] overflow-hidden rounded-md bg-gray-100">
                         {/* Toujours utiliser une balise img standard car les URLs de Cloudinary sont déjà optimisées */}
                         <img 
@@ -671,8 +819,47 @@ export default function AddCarPage() {
                           className="object-cover w-full h-full"
                         />
                       </div>
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-md">
-                        <div className="flex gap-2">
+                      
+                      {/* Numéro d'ordre et badge d'image principale */}
+                      <div className="absolute top-4 left-4 bg-black/70 text-white text-xs px-2 py-1 rounded-full">
+                        {index + 1}
+                      </div>
+                      {formData.mainImage === img && (
+                        <div className="absolute top-4 right-4 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
+                          Principale
+                        </div>
+                      )}
+                      
+                      {/* Contrôles de réorganisation et actions */}
+                      <div className="mt-2 flex justify-between items-center">
+                        <div className="flex gap-1">
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            size="icon" 
+                            className="h-8 w-8"
+                            onClick={() => moveImageUp(index)}
+                            disabled={index === 0}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="m18 15-6-6-6 6"/>
+                            </svg>
+                          </Button>
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            size="icon" 
+                            className="h-8 w-8"
+                            onClick={() => moveImageDown(index)}
+                            disabled={index === formData.images.length - 1}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="m6 9 6 6 6-6"/>
+                            </svg>
+                          </Button>
+                        </div>
+                        
+                        <div className="flex gap-1">
                           <Button 
                             type="button" 
                             variant="secondary" 
@@ -692,11 +879,6 @@ export default function AddCarPage() {
                           </Button>
                         </div>
                       </div>
-                      {formData.mainImage === img && (
-                        <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
-                          Principale
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
